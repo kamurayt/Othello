@@ -6,373 +6,391 @@
 <title>オンラインオセロ</title>
 
 <style>
+*{box-sizing:border-box;}
 body{
-    margin:0;
-    background:#1e1e22;
-    color:white;
-    font-family:sans-serif;
-    text-align:center;
+  margin:0;background:#1e1e22;color:white;font-family:sans-serif;
+  text-align:center;display:flex;flex-direction:column;align-items:center;
 }
-
-h1{
-    font-size:60px;
-    margin:20px 0 10px;
+h1{font-size:42px;margin:18px 0 8px;}
+#lobby,#game{width:100%;max-width:430px;padding:10px;}
+input,button{
+  font-size:18px;padding:10px;margin:6px;border:none;border-radius:8px;
 }
-
-#turn{
-    font-size:28px;
-    margin-bottom:10px;
-}
-
-#score{
-    font-size:24px;
-    margin-bottom:15px;
-}
-
+input{width:180px;}
+button{background:white;color:#111;}
 #board{
-    width:min(92vw,92vh);
-    height:min(92vw,92vh);
-    margin:auto;
-    display:grid;
-    grid-template-columns:repeat(8,1fr);
-    background:#008000;
-    border:4px solid white;
+  width:92vw;max-width:390px;aspect-ratio:1/1;margin:10px auto;
+  display:grid;grid-template-columns:repeat(8,1fr);
+  border:3px solid white;background:#008000;
 }
-
 .cell{
-    border:1px solid black;
-    position:relative;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+  border:1px solid #111;display:flex;align-items:center;justify-content:center;
 }
-
-.disk{
-    width:80%;
-    height:80%;
-    border-radius:50%;
-}
-
-.black{
-    background:black;
-}
-
-.white{
-    background:white;
-}
-
+.disk{width:76%;height:76%;border-radius:50%;}
+.black{background:black;}
+.white{background:white;}
 .hint{
-    width:18%;
-    height:18%;
-    border-radius:50%;
-    background:rgba(255,255,255,0.5);
+  width:22%;height:22%;border-radius:50%;background:rgba(255,255,255,.55);
 }
-
-button{
-    margin-top:20px;
-    padding:12px 30px;
-    font-size:22px;
-    border:none;
-    border-radius:10px;
-}
-
-#message{
-    font-size:28px;
-    margin-top:15px;
-    color:#ffcc00;
-}
+#message{min-height:28px;color:#ffcc00;font-size:20px;}
+#roomText,#playerText,#turn,#score{font-size:20px;margin:6px;}
 </style>
 </head>
 
 <body>
 
-<h1>オセロ</h1>
+<h1>オンラインオセロ</h1>
 
-<div id="turn"></div>
-<div id="score"></div>
+<div id="lobby">
+  <button onclick="createRoom()">部屋を作る</button><br>
+  <input id="roomInput" placeholder="部屋ID">
+  <button onclick="joinRoom()">参加</button>
+</div>
 
-<div id="board"></div>
-
-<div id="message"></div>
-
-<button onclick="requestReset()">リセット申請</button>
+<div id="game" style="display:none;">
+  <div id="roomText"></div>
+  <div id="playerText"></div>
+  <div id="turn"></div>
+  <div id="score"></div>
+  <div id="board"></div>
+  <div id="message"></div>
+  <button onclick="requestReset()">リセット申請</button>
+</div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 import {
-getDatabase,
-ref,
-set,
-onValue,
-update
+  getDatabase, ref, set, get, update, onValue
 } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
-apiKey: "AIzaSyDhx5_Rh-fqZxjuQla78vuooc6l0QEYGYc",
-authDomain: "othello-7216e.firebaseapp.com",
-projectId: "othello-7216e",
-storageBucket: "othello-7216e.firebasestorage.app",
-messagingSenderId: "243717958092",
-appId: "1:243717958092:web:18fda7822ef8922e781569",
-measurementId: "G-X096PWC9TE"
+  apiKey: "AIzaSyDhx5_Rh-fqZxjuQla78vuooc6l0QEYGYc",
+  authDomain: "othello-7216e.firebaseapp.com",
+  databaseURL: "https://othello-7216e-default-rtdb.firebaseio.com",
+  projectId: "othello-7216e",
+  storageBucket: "othello-7216e.firebasestorage.app",
+  messagingSenderId: "243717958092",
+  appId: "1:243717958092:web:18fda7822ef8922e781569",
+  measurementId: "G-X096PWC9TE"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-const gameRef = ref(db,"game");
+const myId = localStorage.getItem("othelloPlayerId") || crypto.randomUUID();
+localStorage.setItem("othelloPlayerId", myId);
 
-let board=[];
-let currentPlayer="black";
-let resetRequest=false;
+let roomId = "";
+let roomRef = null;
+let myColor = "";
+let board = [];
+let currentPlayer = "black";
+let gameEnded = false;
+let lastResetRequestId = "";
 
-function createBoard(){
+function newBoard(){
+  const b = Array.from({length:8},()=>Array(8).fill(""));
+  b[3][3]="white";
+  b[3][4]="black";
+  b[4][3]="black";
+  b[4][4]="white";
+  return b;
+}
 
-board=[];
+window.createRoom = async function(){
+  roomId = Math.random().toString(36).substring(2,8).toUpperCase();
+  roomRef = ref(db,"rooms/"+roomId);
+  myColor = "black";
 
-for(let y=0;y<8;y++){
-    board[y]=[];
-    for(let x=0;x<8;x++){
-        board[y][x]="";
+  await set(roomRef,{
+    board:newBoard(),
+    currentPlayer:"black",
+    gameEnded:false,
+    players:{
+      black:myId,
+      white:""
+    },
+    resetRequest:{
+      active:false,
+      from:"",
+      id:""
     }
-}
+  });
 
-board[3][3]="white";
-board[3][4]="black";
-board[4][3]="black";
-board[4][4]="white";
+  startGame();
+};
 
-saveGame();
-}
+window.joinRoom = async function(){
+  roomId = document.getElementById("roomInput").value.trim().toUpperCase();
+  if(!roomId){
+    alert("部屋IDを入力してね");
+    return;
+  }
 
-function saveGame(){
+  roomRef = ref(db,"rooms/"+roomId);
+  const snap = await get(roomRef);
 
-set(gameRef,{
-    board,
-    currentPlayer,
-    resetRequest
-});
-}
+  if(!snap.exists()){
+    alert("部屋が見つかりません");
+    return;
+  }
 
-function isInside(x,y){
-return x>=0 && x<8 && y>=0 && y<8;
-}
+  const data = snap.val();
 
-function getValidMoves(player){
+  if(data.players.black === myId){
+    myColor = "black";
+  }else if(data.players.white === myId){
+    myColor = "white";
+  }else if(!data.players.white){
+    myColor = "white";
+    await update(roomRef,{
+      "players/white":myId
+    });
+  }else{
+    alert("この部屋は満員です");
+    return;
+  }
 
-const enemy=player==="black"?"white":"black";
+  startGame();
+};
 
-let moves=[];
+function startGame(){
+  document.getElementById("lobby").style.display="none";
+  document.getElementById("game").style.display="block";
 
-for(let y=0;y<8;y++){
-for(let x=0;x<8;x++){
+  document.getElementById("roomText").textContent="部屋ID："+roomId;
+  document.getElementById("playerText").textContent=
+    "あなた："+playerName(myColor);
 
-if(board[y][x]!="") continue;
+  onValue(roomRef,(snapshot)=>{
+    const data = snapshot.val();
+    if(!data) return;
 
-let valid=false;
+    board = data.board;
+    currentPlayer = data.currentPlayer;
+    gameEnded = data.gameEnded || false;
 
-for(let dx=-1;dx<=1;dx++){
-for(let dy=-1;dy<=1;dy++){
+    render();
 
-if(dx===0 && dy===0) continue;
+    const req = data.resetRequest || {};
+    if(
+      req.active &&
+      req.from !== myId &&
+      req.id !== lastResetRequestId
+    ){
+      lastResetRequestId = req.id;
+      const ok = confirm("相手がリセットを申請しました。OKでリセットしますか？");
 
-let nx=x+dx;
-let ny=y+dy;
-
-let foundEnemy=false;
-
-while(isInside(nx,ny)&&board[ny][nx]===enemy){
-    nx+=dx;
-    ny+=dy;
-    foundEnemy=true;
-}
-
-if(foundEnemy&&isInside(nx,ny)&&board[ny][nx]===player){
-    valid=true;
-}
-}
-}
-
-if(valid){
-moves.push({x,y});
-}
-}
-}
-
-return moves;
-}
-
-function placeDisk(x,y){
-
-const moves=getValidMoves(currentPlayer);
-
-let ok=moves.find(m=>m.x===x&&m.y===y);
-
-if(!ok){
-document.getElementById("message").innerText="そこには置けません";
-setTimeout(()=>{
-document.getElementById("message").innerText="";
-},1200);
-return;
-}
-
-board[y][x]=currentPlayer;
-
-const enemy=currentPlayer==="black"?"white":"black";
-
-for(let dx=-1;dx<=1;dx++){
-for(let dy=-1;dy<=1;dy++){
-
-if(dx===0&&dy===0) continue;
-
-let nx=x+dx;
-let ny=y+dy;
-
-let flip=[];
-
-while(isInside(nx,ny)&&board[ny][nx]===enemy){
-flip.push([nx,ny]);
-nx+=dx;
-ny+=dy;
-}
-
-if(isInside(nx,ny)&&board[ny][nx]===currentPlayer){
-
-flip.forEach(p=>{
-board[p[1]][p[0]]=currentPlayer;
-});
-}
-}
-}
-
-currentPlayer=currentPlayer==="black"?"white":"black";
-
-checkGameEnd();
-
-saveGame();
-}
-
-function checkGameEnd(){
-
-const blackMoves=getValidMoves("black");
-const whiteMoves=getValidMoves("white");
-
-if(blackMoves.length===0&&whiteMoves.length===0){
-
-let black=0;
-let white=0;
-
-for(let row of board){
-for(let cell of row){
-
-if(cell==="black") black++;
-if(cell==="white") white++;
-}
-}
-
-if(black>white){
-alert("黒の勝ち！");
-}else if(white>black){
-alert("白の勝ち！");
-}else{
-alert("引き分け！");
-}
-}
+      if(ok){
+        resetRoom();
+      }else{
+        update(roomRef,{
+          resetRequest:{
+            active:false,
+            from:"",
+            id:""
+          }
+        });
+      }
+    }
+  });
 }
 
 function render(){
+  const boardDiv = document.getElementById("board");
+  boardDiv.innerHTML = "";
 
-const boardDiv=document.getElementById("board");
-boardDiv.innerHTML="";
+  const moves = getValidMoves(currentPlayer);
+  let black = 0;
+  let white = 0;
 
-const moves=getValidMoves(currentPlayer);
+  for(let y=0;y<8;y++){
+    for(let x=0;x<8;x++){
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.onclick = ()=>placeDisk(x,y);
 
-let black=0;
-let white=0;
+      if(board[y][x]){
+        const disk = document.createElement("div");
+        disk.className = "disk "+board[y][x];
+        cell.appendChild(disk);
 
-for(let y=0;y<8;y++){
-for(let x=0;x<8;x++){
+        if(board[y][x]==="black") black++;
+        if(board[y][x]==="white") white++;
+      }else{
+        const canPut = moves.some(m=>m.x===x && m.y===y);
+        if(canPut && currentPlayer === myColor && !gameEnded){
+          const hint = document.createElement("div");
+          hint.className = "hint";
+          cell.appendChild(hint);
+        }
+      }
 
-const cell=document.createElement("div");
-cell.className="cell";
+      boardDiv.appendChild(cell);
+    }
+  }
 
-cell.onclick=()=>placeDisk(x,y);
+  document.getElementById("score").textContent =
+    "黒 "+black+" - "+white+" 白";
 
-if(board[y][x]){
+  if(gameEnded){
+    const result =
+      black > white ? "黒の勝ち！" :
+      white > black ? "白の勝ち！" :
+      "引き分け！";
 
-const disk=document.createElement("div");
-disk.className=`disk ${board[y][x]}`;
-
-cell.appendChild(disk);
-
-if(board[y][x]==="black") black++;
-if(board[y][x]==="white") white++;
-
-}else{
-
-const canPut=moves.find(m=>m.x===x&&m.y===y);
-
-if(canPut){
-
-const hint=document.createElement("div");
-hint.className="hint";
-cell.appendChild(hint);
-}
-}
-
-boardDiv.appendChild(cell);
-}
-}
-
-document.getElementById("turn").innerText=
-currentPlayer==="black"?"黒のターン":"白のターン";
-
-document.getElementById("score").innerText=
-`黒 ${black} - ${white} 白`;
-
-if(resetRequest){
-showResetConfirm();
-}
+    document.getElementById("turn").textContent = "試合終了";
+    document.getElementById("message").textContent = result;
+  }else{
+    document.getElementById("turn").textContent =
+      currentPlayer === myColor
+      ? "あなたのターン"
+      : "相手のターン";
+  }
 }
 
-function requestReset(){
+async function placeDisk(x,y){
+  if(gameEnded) return;
 
-update(gameRef,{
-resetRequest:true
-});
+  if(currentPlayer !== myColor){
+    showTemp("相手のターンです");
+    return;
+  }
+
+  const moves = getValidMoves(myColor);
+  const ok = moves.find(m=>m.x===x && m.y===y);
+
+  if(!ok){
+    showTemp("そこには置けません");
+    return;
+  }
+
+  board[y][x] = myColor;
+
+  for(const p of getFlips(x,y,myColor)){
+    board[p.y][p.x] = myColor;
+  }
+
+  let next = opposite(myColor);
+
+  const nextMoves = getValidMoves(next);
+  const myMovesAfter = getValidMoves(myColor);
+
+  if(nextMoves.length === 0 && myMovesAfter.length > 0){
+    showTemp(playerName(next)+"は置ける場所がないのでパス");
+    next = myColor;
+  }
+
+  let ended = false;
+  if(getValidMoves("black").length === 0 && getValidMoves("white").length === 0){
+    ended = true;
+    setTimeout(()=>alert("試合終了"),300);
+  }
+
+  await update(roomRef,{
+    board,
+    currentPlayer:next,
+    gameEnded:ended
+  });
 }
 
-function showResetConfirm(){
-
-const ok=confirm("相手がリセットを申請しました。OKでリセットします");
-
-if(ok){
-resetRequest=false;
-createBoard();
-}else{
-update(gameRef,{
-resetRequest:false
-});
-}
+function getValidMoves(color){
+  const moves = [];
+  for(let y=0;y<8;y++){
+    for(let x=0;x<8;x++){
+      if(board[y][x] === "" && getFlips(x,y,color).length > 0){
+        moves.push({x,y});
+      }
+    }
+  }
+  return moves;
 }
 
-onValue(gameRef,(snapshot)=>{
+function getFlips(x,y,color){
+  if(board[y][x] !== "") return [];
 
-const data=snapshot.val();
+  const enemy = opposite(color);
+  const dirs = [
+    [-1,-1],[0,-1],[1,-1],
+    [-1,0],       [1,0],
+    [-1,1], [0,1],[1,1]
+  ];
 
-if(!data){
-createBoard();
-return;
+  let result = [];
+
+  for(const [dx,dy] of dirs){
+    let nx = x + dx;
+    let ny = y + dy;
+    let temp = [];
+
+    while(
+      nx >= 0 && nx < 8 &&
+      ny >= 0 && ny < 8 &&
+      board[ny][nx] === enemy
+    ){
+      temp.push({x:nx,y:ny});
+      nx += dx;
+      ny += dy;
+    }
+
+    if(
+      temp.length > 0 &&
+      nx >= 0 && nx < 8 &&
+      ny >= 0 && ny < 8 &&
+      board[ny][nx] === color
+    ){
+      result = result.concat(temp);
+    }
+  }
+
+  return result;
 }
 
-board=data.board;
-currentPlayer=data.currentPlayer;
-resetRequest=data.resetRequest||false;
+window.requestReset = async function(){
+  if(!roomRef) return;
 
-render();
-});
+  await update(roomRef,{
+    resetRequest:{
+      active:true,
+      from:myId,
+      id:Date.now().toString()
+    }
+  });
 
+  showTemp("リセット申請を送りました");
+};
+
+async function resetRoom(){
+  await update(roomRef,{
+    board:newBoard(),
+    currentPlayer:"black",
+    gameEnded:false,
+    resetRequest:{
+      active:false,
+      from:"",
+      id:""
+    }
+  });
+}
+
+function showTemp(text){
+  const msg = document.getElementById("message");
+  msg.textContent = text;
+
+  setTimeout(()=>{
+    if(msg.textContent === text){
+      msg.textContent = "";
+    }
+  },1400);
+}
+
+function opposite(color){
+  return color === "black" ? "white" : "black";
+}
+
+function playerName(color){
+  return color === "black" ? "黒" : "白";
+}
 </script>
 
 </body>

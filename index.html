@@ -6,34 +6,103 @@
 <title>オンラインオセロ</title>
 
 <style>
-*{box-sizing:border-box;}
+*{
+box-sizing:border-box;
+}
+
 body{
-  margin:0;background:#1e1e22;color:white;font-family:sans-serif;
-  text-align:center;display:flex;flex-direction:column;align-items:center;
+margin:0;
+background:#1e1e22;
+color:white;
+font-family:sans-serif;
+text-align:center;
+display:flex;
+flex-direction:column;
+align-items:center;
 }
-h1{font-size:42px;margin:18px 0 8px;}
-#lobby,#game{width:100%;max-width:430px;padding:10px;}
-input,button{
-  font-size:18px;padding:10px;margin:6px;border:none;border-radius:8px;
+
+h1{
+font-size:42px;
+margin:18px 0 8px;
 }
-input{width:180px;}
-button{background:white;color:#111;}
+
+#lobby,
+#game{
+width:100%;
+max-width:430px;
+padding:10px;
+}
+
+input,
+button{
+font-size:18px;
+padding:10px;
+margin:6px;
+border:none;
+border-radius:8px;
+}
+
+input{
+width:180px;
+}
+
+button{
+background:white;
+color:#111;
+}
+
 #board{
-  width:92vw;max-width:390px;aspect-ratio:1/1;margin:10px auto;
-  display:grid;grid-template-columns:repeat(8,1fr);
-  border:3px solid white;background:#008000;
+width:92vw;
+max-width:390px;
+aspect-ratio:1/1;
+margin:10px auto;
+display:grid;
+grid-template-columns:repeat(8,1fr);
+border:3px solid white;
+background:#008000;
 }
+
 .cell{
-  border:1px solid #111;display:flex;align-items:center;justify-content:center;
+border:1px solid #111;
+display:flex;
+align-items:center;
+justify-content:center;
 }
-.disk{width:76%;height:76%;border-radius:50%;}
-.black{background:black;}
-.white{background:white;}
+
+.disk{
+width:76%;
+height:76%;
+border-radius:50%;
+}
+
+.black{
+background:black;
+}
+
+.white{
+background:white;
+}
+
 .hint{
-  width:22%;height:22%;border-radius:50%;background:rgba(255,255,255,.55);
+width:22%;
+height:22%;
+border-radius:50%;
+background:rgba(255,255,255,.55);
 }
-#message{min-height:28px;color:#ffcc00;font-size:20px;}
-#roomText,#playerText,#turn,#score{font-size:20px;margin:6px;}
+
+#message{
+min-height:28px;
+color:#ffcc00;
+font-size:20px;
+}
+
+#roomText,
+#playerText,
+#turn,
+#score{
+font-size:20px;
+margin:6px;
+}
 </style>
 </head>
 
@@ -42,355 +111,677 @@ button{background:white;color:#111;}
 <h1>オンラインオセロ</h1>
 
 <div id="lobby">
-  <button onclick="createRoom()">部屋を作る</button><br>
-  <input id="roomInput" placeholder="部屋ID">
-  <button onclick="joinRoom()">参加</button>
+
+<button onclick="createRoom()">
+部屋を作る
+</button>
+
+<br>
+
+<input id="roomInput" placeholder="部屋ID">
+
+<button onclick="joinRoom()">
+参加
+</button>
+
 </div>
 
 <div id="game" style="display:none;">
-  <div id="roomText"></div>
-  <div id="playerText"></div>
-  <div id="turn"></div>
-  <div id="score"></div>
-  <div id="board"></div>
-  <div id="message"></div>
-  <button onclick="requestReset()">リセット申請</button>
+
+<div id="roomText"></div>
+
+<div id="playerText"></div>
+
+<div id="turn"></div>
+
+<div id="score"></div>
+
+<div id="board"></div>
+
+<div id="message"></div>
+
+<button onclick="requestReset()">
+リセット申請
+</button>
+
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+
 import {
-  getDatabase, ref, set, get, update, onValue
-} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
+getDatabase,
+ref,
+set,
+get,
+update,
+onValue
+}
+from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDhx5_Rh-fqZxjuQla78vuooc6l0QEYGYc",
-  authDomain: "othello-7216e.firebaseapp.com",
-  databaseURL: "https://othello-7216e-default-rtdb.firebaseio.com",
-  projectId: "othello-7216e",
-  storageBucket: "othello-7216e.firebasestorage.app",
-  messagingSenderId: "243717958092",
-  appId: "1:243717958092:web:18fda7822ef8922e781569",
-  measurementId: "G-X096PWC9TE"
+
+apiKey: "AIzaSyDhx5_Rh-fqZxjuQla78vuooc6l0QEYGYc",
+
+authDomain: "othello-7216e.firebaseapp.com",
+
+databaseURL: "https://othello-7216e-default-rtdb.firebaseio.com",
+
+projectId: "othello-7216e",
+
+storageBucket: "othello-7216e.firebasestorage.app",
+
+messagingSenderId: "243717958092",
+
+appId: "1:243717958092:web:18fda7822ef8922e781569",
+
+measurementId: "G-X096PWC9TE"
 };
 
 const app = initializeApp(firebaseConfig);
+
 const db = getDatabase(app);
 
-const myId = localStorage.getItem("othelloPlayerId") || crypto.randomUUID();
-localStorage.setItem("othelloPlayerId", myId);
+const myId =
+localStorage.getItem("othelloPlayerId")
+||
+crypto.randomUUID();
 
-let roomId = "";
-let roomRef = null;
-let myColor = "";
-let board = [];
-let currentPlayer = "black";
-let gameEnded = false;
-let lastResetRequestId = "";
+localStorage.setItem(
+"othelloPlayerId",
+myId
+);
+
+let roomId="";
+
+let roomRef=null;
+
+let myColor="";
+
+let board=[];
+
+let currentPlayer="black";
+
+let gameEnded=false;
+
+let lastResetRequestId="";
 
 function newBoard(){
-  const b = Array.from({length:8},()=>Array(8).fill(""));
-  b[3][3]="white";
-  b[3][4]="black";
-  b[4][3]="black";
-  b[4][4]="white";
-  return b;
+
+const b=
+Array.from(
+{length:8},
+()=>Array(8).fill("")
+);
+
+b[3][3]="white";
+b[3][4]="black";
+b[4][3]="black";
+b[4][4]="white";
+
+return b;
 }
 
-window.createRoom = async function(){
-  roomId = Math.random().toString(36).substring(2,8).toUpperCase();
-  roomRef = ref(db,"rooms/"+roomId);
-  myColor = "black";
+window.createRoom =
+async function(){
 
-  await set(roomRef,{
-    board:newBoard(),
-    currentPlayer:"black",
-    gameEnded:false,
-    players:{
-      black:myId,
-      white:""
-    },
-    resetRequest:{
-      active:false,
-      from:"",
-      id:""
-    }
-  });
+roomId=
+Math.random()
+.toString(36)
+.substring(2,8)
+.toUpperCase();
 
-  startGame();
+roomRef=
+ref(db,"rooms/"+roomId);
+
+myColor="black";
+
+await set(roomRef,{
+
+board:newBoard(),
+
+currentPlayer:"black",
+
+gameEnded:false,
+
+players:{
+black:myId,
+white:""
+},
+
+resetRequest:{
+active:false,
+from:"",
+id:""
+}
+});
+
+startGame();
 };
 
-window.joinRoom = async function(){
-  roomId = document.getElementById("roomInput").value.trim().toUpperCase();
-  if(!roomId){
-    alert("部屋IDを入力してね");
-    return;
-  }
+window.joinRoom =
+async function(){
 
-  roomRef = ref(db,"rooms/"+roomId);
-  const snap = await get(roomRef);
+roomId=
+document
+.getElementById("roomInput")
+.value
+.trim()
+.toUpperCase();
 
-  if(!snap.exists()){
-    alert("部屋が見つかりません");
-    return;
-  }
+if(!roomId){
 
-  const data = snap.val();
+alert("部屋IDを入力してね");
 
-  if(data.players.black === myId){
-    myColor = "black";
-  }else if(data.players.white === myId){
-    myColor = "white";
-  }else if(!data.players.white){
-    myColor = "white";
-    await update(roomRef,{
-      "players/white":myId
-    });
-  }else{
-    alert("この部屋は満員です");
-    return;
-  }
+return;
+}
 
-  startGame();
+roomRef=
+ref(db,"rooms/"+roomId);
+
+const snap=
+await get(roomRef);
+
+if(!snap.exists()){
+
+alert("部屋が見つかりません");
+
+return;
+}
+
+const data=snap.val();
+
+if(data.players.black===myId){
+
+myColor="black";
+
+}else if(data.players.white===myId){
+
+myColor="white";
+
+}else if(!data.players.white){
+
+myColor="white";
+
+await update(roomRef,{
+"players/white":myId
+});
+
+}else{
+
+alert("この部屋は満員です");
+
+return;
+}
+
+startGame();
 };
 
 function startGame(){
-  document.getElementById("lobby").style.display="none";
-  document.getElementById("game").style.display="block";
 
-  document.getElementById("roomText").textContent="部屋ID："+roomId;
-  document.getElementById("playerText").textContent=
-    "あなた："+playerName(myColor);
+document
+.getElementById("lobby")
+.style.display="none";
 
-  onValue(roomRef,(snapshot)=>{
-    const data = snapshot.val();
-    if(!data) return;
+document
+.getElementById("game")
+.style.display="block";
 
-    board = data.board;
-    currentPlayer = data.currentPlayer;
-    gameEnded = data.gameEnded || false;
+document
+.getElementById("roomText")
+.textContent=
+"部屋ID："+roomId;
 
-    render();
+document
+.getElementById("playerText")
+.textContent=
+"あなた："+playerName(myColor);
 
-    const req = data.resetRequest || {};
-    if(
-      req.active &&
-      req.from !== myId &&
-      req.id !== lastResetRequestId
-    ){
-      lastResetRequestId = req.id;
-      const ok = confirm("相手がリセットを申請しました。OKでリセットしますか？");
+onValue(roomRef,(snapshot)=>{
 
-      if(ok){
-        resetRoom();
-      }else{
-        update(roomRef,{
-          resetRequest:{
-            active:false,
-            from:"",
-            id:""
-          }
-        });
-      }
-    }
-  });
+const data=snapshot.val();
+
+if(!data) return;
+
+board=data.board;
+
+currentPlayer=data.currentPlayer;
+
+gameEnded=data.gameEnded||false;
+
+render();
+
+const req=data.resetRequest||{};
+
+if(
+req.active
+&&
+req.from!==myId
+&&
+req.id!==lastResetRequestId
+){
+
+lastResetRequestId=req.id;
+
+const ok=confirm(
+"相手がリセットを申請しました。\nOKでリセットしますか？"
+);
+
+if(ok){
+
+resetRoom();
+
+}else{
+
+update(roomRef,{
+
+resetRequest:{
+active:false,
+from:"",
+id:""
+}
+});
+}
+}
+});
 }
 
 function render(){
-  const boardDiv = document.getElementById("board");
-  boardDiv.innerHTML = "";
 
-  const moves = getValidMoves(currentPlayer);
-  let black = 0;
-  let white = 0;
+const boardDiv=
+document.getElementById("board");
 
-  for(let y=0;y<8;y++){
-    for(let x=0;x<8;x++){
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      cell.onclick = ()=>placeDisk(x,y);
+boardDiv.innerHTML="";
 
-      if(board[y][x]){
-        const disk = document.createElement("div");
-        disk.className = "disk "+board[y][x];
-        cell.appendChild(disk);
+const moves=
+getValidMoves(currentPlayer);
 
-        if(board[y][x]==="black") black++;
-        if(board[y][x]==="white") white++;
-      }else{
-        const canPut = moves.some(m=>m.x===x && m.y===y);
-        if(canPut && currentPlayer === myColor && !gameEnded){
-          const hint = document.createElement("div");
-          hint.className = "hint";
-          cell.appendChild(hint);
-        }
-      }
+let black=0;
+let white=0;
 
-      boardDiv.appendChild(cell);
-    }
-  }
+for(let y=0;y<8;y++){
+for(let x=0;x<8;x++){
 
-  document.getElementById("score").textContent =
-    "黒 "+black+" - "+white+" 白";
+const cell=
+document.createElement("div");
 
-  if(gameEnded){
-    const result =
-      black > white ? "黒の勝ち！" :
-      white > black ? "白の勝ち！" :
-      "引き分け！";
+cell.className="cell";
 
-    document.getElementById("turn").textContent = "試合終了";
-    document.getElementById("message").textContent = result;
-  }else{
-    document.getElementById("turn").textContent =
-      currentPlayer === myColor
-      ? "あなたのターン"
-      : "相手のターン";
-  }
+cell.onclick=
+()=>placeDisk(x,y);
+
+if(board[y][x]){
+
+const disk=
+document.createElement("div");
+
+disk.className=
+"disk "+board[y][x];
+
+cell.appendChild(disk);
+
+if(board[y][x]==="black")
+black++;
+
+if(board[y][x]==="white")
+white++;
+
+}else{
+
+const canPut=
+moves.some(
+m=>m.x===x&&m.y===y
+);
+
+if(
+canPut
+&&
+currentPlayer===myColor
+&&
+!gameEnded
+){
+
+const hint=
+document.createElement("div");
+
+hint.className="hint";
+
+cell.appendChild(hint);
+}
+}
+
+boardDiv.appendChild(cell);
+}
+}
+
+document
+.getElementById("score")
+.textContent=
+"黒 "+black+" - "+white+" 白";
+
+if(gameEnded){
+
+let result="引き分け！";
+
+if(black>white){
+
+result="黒の勝ち！";
+
+}else if(white>black){
+
+result="白の勝ち！";
+}
+
+document
+.getElementById("turn")
+.textContent=
+"試合終了";
+
+document
+.getElementById("message")
+.textContent=result;
+
+}else{
+
+document
+.getElementById("turn")
+.textContent=
+
+currentPlayer===myColor
+?
+"あなたのターン"
+:
+"相手のターン";
+}
 }
 
 async function placeDisk(x,y){
-  if(gameEnded) return;
 
-  if(currentPlayer !== myColor){
-    showTemp("相手のターンです");
-    return;
-  }
+if(gameEnded) return;
 
-  const moves = getValidMoves(myColor);
-  const ok = moves.find(m=>m.x===x && m.y===y);
+if(currentPlayer!==myColor){
 
-  if(!ok){
-    showTemp("そこには置けません");
-    return;
-  }
+showTemp("相手のターンです");
 
-  board[y][x] = myColor;
+return;
+}
 
-  for(const p of getFlips(x,y,myColor)){
-    board[p.y][p.x] = myColor;
-  }
+const moves=
+getValidMoves(myColor);
 
-  let next = opposite(myColor);
+const ok=
+moves.find(
+m=>m.x===x&&m.y===y
+);
 
-  const nextMoves = getValidMoves(next);
-  const myMovesAfter = getValidMoves(myColor);
+if(!ok){
 
-  if(nextMoves.length === 0 && myMovesAfter.length > 0){
-    showTemp(playerName(next)+"は置ける場所がないのでパス");
-    next = myColor;
-  }
+showTemp("そこには置けません");
 
-  let ended = false;
-  if(getValidMoves("black").length === 0 && getValidMoves("white").length === 0){
-    ended = true;
-    setTimeout(()=>alert("試合終了"),300);
-  }
+return;
+}
 
-  await update(roomRef,{
-    board,
-    currentPlayer:next,
-    gameEnded:ended
-  });
+board[y][x]=myColor;
+
+for(
+const p of getFlips(
+x,
+y,
+myColor
+)
+){
+
+board[p.y][p.x]=myColor;
+}
+
+let next=
+opposite(myColor);
+
+const nextMoves=
+getValidMoves(next);
+
+const myMovesAfter=
+getValidMoves(myColor);
+
+if(
+nextMoves.length===0
+&&
+myMovesAfter.length>0
+){
+
+showTemp(
+playerName(next)
++
+"は置ける場所がないのでパス"
+);
+
+next=myColor;
+}
+
+let ended=false;
+
+if(
+getValidMoves("black").length===0
+&&
+getValidMoves("white").length===0
+){
+
+ended=true;
+
+setTimeout(()=>{
+
+let black=0;
+let white=0;
+
+for(let row of board){
+for(let cell of row){
+
+if(cell==="black")
+black++;
+
+if(cell==="white")
+white++;
+}
+}
+
+let result="引き分け！";
+
+if(black>white){
+
+result="黒の勝ち！";
+
+}else if(white>black){
+
+result="白の勝ち！";
+}
+
+alert(result);
+
+},300);
+}
+
+await update(roomRef,{
+
+board,
+
+currentPlayer:next,
+
+gameEnded:ended
+});
 }
 
 function getValidMoves(color){
-  const moves = [];
-  for(let y=0;y<8;y++){
-    for(let x=0;x<8;x++){
-      if(board[y][x] === "" && getFlips(x,y,color).length > 0){
-        moves.push({x,y});
-      }
-    }
-  }
-  return moves;
+
+const moves=[];
+
+for(let y=0;y<8;y++){
+for(let x=0;x<8;x++){
+
+if(
+board[y][x]===""
+&&
+getFlips(x,y,color)
+.length>0
+){
+
+moves.push({x,y});
+}
+}
+}
+
+return moves;
 }
 
 function getFlips(x,y,color){
-  if(board[y][x] !== "") return [];
 
-  const enemy = opposite(color);
-  const dirs = [
-    [-1,-1],[0,-1],[1,-1],
-    [-1,0],       [1,0],
-    [-1,1], [0,1],[1,1]
-  ];
+if(board[y][x]!=="")
+return [];
 
-  let result = [];
+const enemy=
+opposite(color);
 
-  for(const [dx,dy] of dirs){
-    let nx = x + dx;
-    let ny = y + dy;
-    let temp = [];
+const dirs=[
+[-1,-1],
+[0,-1],
+[1,-1],
+[-1,0],
+[1,0],
+[-1,1],
+[0,1],
+[1,1]
+];
 
-    while(
-      nx >= 0 && nx < 8 &&
-      ny >= 0 && ny < 8 &&
-      board[ny][nx] === enemy
-    ){
-      temp.push({x:nx,y:ny});
-      nx += dx;
-      ny += dy;
-    }
+let result=[];
 
-    if(
-      temp.length > 0 &&
-      nx >= 0 && nx < 8 &&
-      ny >= 0 && ny < 8 &&
-      board[ny][nx] === color
-    ){
-      result = result.concat(temp);
-    }
-  }
+for(const [dx,dy] of dirs){
 
-  return result;
+let nx=x+dx;
+let ny=y+dy;
+
+let temp=[];
+
+while(
+
+nx>=0
+&&
+nx<8
+&&
+ny>=0
+&&
+ny<8
+&&
+board[ny][nx]===enemy
+
+){
+
+temp.push({
+x:nx,
+y:ny
+});
+
+nx+=dx;
+ny+=dy;
 }
 
-window.requestReset = async function(){
-  if(!roomRef) return;
+if(
 
-  await update(roomRef,{
-    resetRequest:{
-      active:true,
-      from:myId,
-      id:Date.now().toString()
-    }
-  });
+temp.length>0
+&&
+nx>=0
+&&
+nx<8
+&&
+ny>=0
+&&
+ny<8
+&&
+board[ny][nx]===color
 
-  showTemp("リセット申請を送りました");
+){
+
+result=
+result.concat(temp);
+}
+}
+
+return result;
+}
+
+window.requestReset =
+async function(){
+
+if(!roomRef) return;
+
+await update(roomRef,{
+
+resetRequest:{
+active:true,
+from:myId,
+id:Date.now().toString()
+}
+});
+
+showTemp(
+"リセット申請を送りました"
+);
 };
 
 async function resetRoom(){
-  await update(roomRef,{
-    board:newBoard(),
-    currentPlayer:"black",
-    gameEnded:false,
-    resetRequest:{
-      active:false,
-      from:"",
-      id:""
-    }
-  });
+
+await update(roomRef,{
+
+board:newBoard(),
+
+currentPlayer:"black",
+
+gameEnded:false,
+
+resetRequest:{
+active:false,
+from:"",
+id:""
+}
+});
 }
 
 function showTemp(text){
-  const msg = document.getElementById("message");
-  msg.textContent = text;
 
-  setTimeout(()=>{
-    if(msg.textContent === text){
-      msg.textContent = "";
-    }
-  },1400);
+const msg=
+document
+.getElementById("message");
+
+msg.textContent=text;
+
+setTimeout(()=>{
+
+if(msg.textContent===text){
+
+msg.textContent="";
+}
+
+},1400);
 }
 
 function opposite(color){
-  return color === "black" ? "white" : "black";
+
+return color==="black"
+?
+"white"
+:
+"black";
 }
 
 function playerName(color){
-  return color === "black" ? "黒" : "白";
+
+return color==="black"
+?
+"黒"
+:
+"白";
 }
+
 </script>
 
 </body>

@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>オセロ</title>
+<title>オセロ 修正版</title>
 
 <style>
+
 *{
   box-sizing:border-box;
 }
@@ -24,7 +25,7 @@ body{
 }
 
 h1{
-  margin:20px 0 8px;
+  margin:18px 0 8px;
   font-size:42px;
 }
 
@@ -39,8 +40,8 @@ h1{
 }
 
 #board{
-  width:92vw;
-  max-width:420px;
+  width:90vw;
+  max-width:390px;
   aspect-ratio:1/1;
 
   display:grid;
@@ -51,7 +52,7 @@ h1{
 }
 
 .cell{
-  background:green;
+  background:#008000;
   border:1px solid #111;
 
   display:flex;
@@ -76,24 +77,26 @@ h1{
 }
 
 .hint{
-  width:22%;
-  height:22%;
+  width:24%;
+  height:24%;
   border-radius:50%;
-  background:rgba(255,255,255,0.5);
+  background:rgba(255,255,255,0.55);
 }
 
 #message{
-  margin-top:14px;
+  margin-top:12px;
+  min-height:24px;
   font-size:18px;
 }
 
 button{
-  margin-top:12px;
+  margin-top:10px;
   padding:10px 18px;
   font-size:16px;
   border:none;
   border-radius:8px;
 }
+
 </style>
 </head>
 
@@ -103,9 +106,7 @@ button{
 
 <div id="turn">黒のターン</div>
 
-<div id="score">
-黒 2 - 2 白
-</div>
+<div id="score">黒 2 - 2 白</div>
 
 <div id="board"></div>
 
@@ -117,27 +118,40 @@ button{
 
 <script>
 
-const boardElement = document.getElementById("board");
-const turnElement = document.getElementById("turn");
-const scoreElement = document.getElementById("score");
-const messageElement = document.getElementById("message");
+const boardElement =
+  document.getElementById("board");
 
-let board = [];
+const turnElement =
+  document.getElementById("turn");
+
+const scoreElement =
+  document.getElementById("score");
+
+const messageElement =
+  document.getElementById("message");
+
+let boardData = [];
 let currentPlayer = "black";
+let gameOver = false;
 
 function resetGame(){
 
-  board = Array.from(
-    {length:8},
-    ()=>Array(8).fill(null)
-  );
+  boardData =
+    Array.from(
+      {length:8},
+      ()=>Array(8).fill("")
+    );
 
-  board[3][3] = "white";
-  board[3][4] = "black";
-  board[4][3] = "black";
-  board[4][4] = "white";
+  boardData[3][3] = "white";
+  boardData[3][4] = "black";
+  boardData[4][3] = "black";
+  boardData[4][4] = "white";
 
   currentPlayer = "black";
+
+  gameOver = false;
+
+  messageElement.textContent = "";
 
   drawBoard();
 }
@@ -150,29 +164,43 @@ function drawBoard(){
 
     for(let x=0;x<8;x++){
 
-      const cell = document.createElement("div");
+      const cell =
+        document.createElement("div");
+
       cell.className = "cell";
 
-      cell.onclick = ()=>placeStone(x,y);
+      cell.addEventListener(
+        "click",
+        ()=>placeStone(x,y)
+      );
 
-      if(board[y][x]){
+      const value =
+        boardData[y][x];
 
-        const stone = document.createElement("div");
+      if(value !== ""){
+
+        const stone =
+          document.createElement("div");
 
         stone.className =
-          "stone " + board[y][x];
+          "stone " + value;
 
         cell.appendChild(stone);
 
-      }else if(
-        getFlips(x,y,currentPlayer).length > 0
-      ){
+      }else{
 
-        const hint = document.createElement("div");
+        const flips =
+          getFlips(x,y,currentPlayer);
 
-        hint.className = "hint";
+        if(flips.length > 0){
 
-        cell.appendChild(hint);
+          const hint =
+            document.createElement("div");
+
+          hint.className = "hint";
+
+          cell.appendChild(hint);
+        }
       }
 
       boardElement.appendChild(cell);
@@ -184,7 +212,15 @@ function drawBoard(){
 
 function placeStone(x,y){
 
-  if(board[y][x] !== null) return;
+  if(gameOver) return;
+
+  if(boardData[y][x] !== ""){
+
+    messageElement.textContent =
+      "そこは埋まっています";
+
+    return;
+  }
 
   const flips =
     getFlips(x,y,currentPlayer);
@@ -197,29 +233,30 @@ function placeStone(x,y){
     return;
   }
 
-  board[y][x] = currentPlayer;
+  boardData[y][x] =
+    currentPlayer;
 
   for(const p of flips){
 
-    board[p.y][p.x] = currentPlayer;
+    boardData[p.y][p.x] =
+      currentPlayer;
   }
 
   currentPlayer =
-    currentPlayer === "black"
-    ? "white"
-    : "black";
+    opposite(currentPlayer);
+
+  messageElement.textContent = "";
 
   drawBoard();
 }
 
 function getFlips(x,y,color){
 
-  if(board[y][x] !== null) return [];
+  if(boardData[y][x] !== "")
+    return [];
 
   const enemy =
-    color === "black"
-    ? "white"
-    : "black";
+    opposite(color);
 
   const directions = [
 
@@ -235,7 +272,7 @@ function getFlips(x,y,color){
     [1,1]
   ];
 
-  let flips = [];
+  let result = [];
 
   for(const [dx,dy] of directions){
 
@@ -250,7 +287,7 @@ function getFlips(x,y,color){
       nx < 8 &&
       ny >= 0 &&
       ny < 8 &&
-      board[ny][nx] === enemy
+      boardData[ny][nx] === enemy
 
     ){
 
@@ -266,19 +303,22 @@ function getFlips(x,y,color){
     if(
 
       temp.length > 0 &&
+
       nx >= 0 &&
       nx < 8 &&
       ny >= 0 &&
       ny < 8 &&
-      board[ny][nx] === color
+
+      boardData[ny][nx] === color
 
     ){
 
-      flips = flips.concat(temp);
+      result =
+        result.concat(temp);
     }
   }
 
-  return flips;
+  return result;
 }
 
 function updateStatus(){
@@ -290,10 +330,10 @@ function updateStatus(){
 
     for(let x=0;x<8;x++){
 
-      if(board[y][x] === "black")
+      if(boardData[y][x] === "black")
         blackCount++;
 
-      if(board[y][x] === "white")
+      if(boardData[y][x] === "white")
         whiteCount++;
     }
   }
@@ -311,6 +351,13 @@ function updateStatus(){
     " - " +
     whiteCount +
     " 白";
+}
+
+function opposite(color){
+
+  return color === "black"
+    ? "white"
+    : "black";
 }
 
 resetGame();
